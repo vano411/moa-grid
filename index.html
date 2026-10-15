@@ -1,0 +1,1019 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>MOA Grid Target</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: square target on the left, readout and shot list on the right; stacks on phones. */
+  :root {
+    --tint: #d3dcdc;
+    --bg: #e4e9e8;
+    --ink: #12181a;
+    --muted: #566468;
+    --line: #bcc7c7;
+    --field: #f7f9f8;
+    --paper: #fbfbf8;
+    --tink: #12181a;
+    --shot: #d02f0c;
+    --grp: #1757b8;
+    --f-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --f-body: 'Barlow', system-ui, sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tint: #1b2629; --bg: #0d1214; --ink: #e6ecec; --muted: #8fa0a4; --line: #2b383c;
+      --field: #151d20; --paper: #dfe4e1; --tink: #0f1517; --shot: #c92a08; --grp: #1757b8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tint: #1b2629; --bg: #0d1214; --ink: #e6ecec; --muted: #8fa0a4; --line: #2b383c;
+    --field: #151d20; --paper: #dfe4e1; --tink: #0f1517; --shot: #c92a08; --grp: #1757b8;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 15px/1.45 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 24px 40px;
+  }
+  .wrap { max-width: 1100px; margin-inline: auto; display: grid; gap: 24px; }
+  h1 {
+    font: 700 36px/1 var(--f-display);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--muted); max-width: 60ch; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
+  .targetcol { min-width: 0; max-width: 720px; width: 100%; }
+  #target {
+    display: block; width: 100%; height: auto;
+    touch-action: pan-y; cursor: crosshair;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.14);
+    user-select: none; -webkit-user-select: none;
+  }
+  .status { margin: 12px 0 0; color: var(--muted); font-size: 14px; min-height: 1.45em; }
+
+  /* Target drawing */
+  .paper { fill: var(--paper); }
+  .frame { fill: none; stroke: var(--tink); stroke-width: 12; }
+  .mn { stroke: var(--tink); stroke-width: 1; }
+  .wh { stroke: var(--tink); stroke-width: 2.6; }
+  .ax { stroke: var(--tink); stroke-width: 6; }
+  .lbl { font: 500 24px var(--f-display); fill: var(--tink); text-anchor: middle; dominant-baseline: central; }
+  .dia { fill: var(--tink); }
+  .ring { fill: none; stroke: var(--paper); stroke-width: 4; }
+  .core { fill: var(--paper); }
+  .core-x { stroke: var(--tink); stroke-width: 2; }
+  .halo { stroke: var(--paper); stroke-width: 13; fill: none; stroke-linecap: round; }
+  .mark { stroke: var(--shot); stroke-width: 5.5; fill: none; stroke-linecap: round; }
+  .num { font: 600 24px var(--f-display); fill: var(--shot); paint-order: stroke; stroke: var(--paper); stroke-width: 5px; }
+  .gcirc { fill: var(--grp); fill-opacity: .08; stroke: var(--grp); stroke-width: 3; stroke-dasharray: 10 8; }
+  .gline { stroke: var(--grp); stroke-width: 2.5; stroke-dasharray: 3 7; stroke-linecap: round; opacity: .8; }
+  .gctr { fill: none; stroke: var(--grp); stroke-width: 4; }
+
+  /* Panel */
+  .panel { display: grid; gap: 0; min-width: 0; }
+  .panel section { padding-block: 20px; border-top: 1px solid var(--line); min-width: 0; }
+  .panel section:first-child { border-top: 0; padding-top: 0; }
+  h2 {
+    font: 600 12px var(--f-body);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .field + .field { margin-top: 0; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 13px; color: var(--muted); }
+  input, select {
+    font: 500 15px var(--f-mono);
+    background: var(--field);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 10px;
+    min-height: 40px;
+    width: 100%;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--grp); outline-offset: 2px; }
+
+  .big { font: 600 68px/0.95 var(--f-display); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
+  .big small { font: 600 20px var(--f-display); letter-spacing: .08em; color: var(--muted); }
+  .sub { color: var(--muted); margin: 6px 0 14px; font-size: 14px; }
+  dl.stats { margin: 0; display: grid; gap: 8px; }
+  dl.stats div { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; }
+  dt { color: var(--muted); font-size: 14px; }
+  dd { margin: 0; font: 500 14px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+  .dial { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); display: grid; gap: 6px; }
+  .dial .t { font: 600 12px var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--grp); }
+  .dial p { margin: 0; font: 500 16px var(--f-mono); }
+  .dial p span { color: var(--muted); font-size: 13px; }
+
+  .chip {
+    display: inline-block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; color: var(--muted); margin-bottom: 12px;
+  }
+  .shotsec { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .scale { margin: 10px 0 0; font: 500 13px var(--f-mono); color: var(--muted); }
+  ol.shots { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px 16px; }
+  ol.shots li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 8px; padding: 4px 0; }
+  .n { font: 600 18px var(--f-display); color: var(--shot); text-align: center; }
+  .pos { font: 400 13px var(--f-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .lbl.sm { font-size: 20px; }
+
+  .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px; }
+  .tab {
+    flex: none; white-space: nowrap; font: 600 14px var(--f-body); background: transparent; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 3px; padding: 8px 14px; min-height: 38px; cursor: pointer;
+  }
+  .tab:hover { color: var(--ink); border-color: var(--ink); }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .tab.add { border-style: dashed; }
+  .tab:focus-visible, .linkbtn:focus-visible { outline: 2px solid var(--grp); outline-offset: 2px; }
+  .setbtns { margin-top: 14px; }
+  .btn.quiet { color: var(--muted); }
+
+  .tablewrap { overflow-x: auto; }
+  table.cmp { border-collapse: collapse; width: 100%; font-size: 14px; }
+  table.cmp th {
+    font: 600 12px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    text-align: left; padding: 6px 14px 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  table.cmp td { padding: 9px 14px 9px 8px; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+  table.cmp tr.cur td { background: var(--tint); }
+  table.cmp td.ld { min-width: 150px; }
+  table.cmp td:first-child { min-width: 96px; }
+  table.cmp td.v { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.cmp td.best { font-weight: 600; }
+  .linkbtn {
+    background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--ink);
+    font: 600 14px var(--f-body); text-decoration: underline; text-underline-offset: 3px;
+  }
+  .pill {
+    display: inline-block; margin-left: 8px; font: 600 11px var(--f-body); letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid var(--ink); color: var(--ink); border-radius: 99px; padding: 1px 8px;
+  }
+  .empty { color: var(--muted); margin: 0 0 14px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    font: 600 14px var(--f-body); background: transparent; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px; padding: 8px 16px; min-height: 38px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--ink); }
+  .note { color: var(--muted); font-size: 13px; margin: 0; }
+  .lsum { margin: 0 0 14px; font: 500 13px/1.5 var(--f-mono); color: var(--ink); white-space: pre-line; overflow-wrap: anywhere; }
+  .lsum:empty { display: none; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .targetcol { max-width: none; }
+    h1 { font-size: 30px; }
+  }
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>MOA Grid Target</h1>
+    <p class="lede">Mark where each shot landed. The grid measures your group and tells you how far to dial.</p>
+  </header>
+
+  <div class="layout">
+    <section class="targetcol">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Groups"></div>
+      <svg id="target" viewBox="0 0 1000 1000" role="img" aria-label="MOA grid target, 3 and a quarter MOA in each direction from the center"></svg>
+      <p class="scale" id="scale"></p>
+      <p class="status" id="status" aria-live="polite">Tap inside the grid to mark a shot. Use Undo last to take one back.</p>
+
+      <div class="shotsec" role="group" aria-labelledby="h-shots">
+        <h2 id="h-shots">Shots</h2>
+        <span class="chip" id="chip" hidden>Example shots. Your first tap replaces them.</span>
+        <p class="empty" id="empty" hidden>No shots yet.</p>
+        <ol class="shots" id="list"></ol>
+        <div class="btns">
+          <button type="button" class="btn" id="undo">Undo last</button>
+          <button type="button" class="btn" id="clear">Clear shots</button>
+          <button type="button" class="btn" id="save" hidden>Save as image</button>
+          <button type="button" class="btn" id="saveall" hidden title="Save one image with every group">Save all groups</button>
+        </div>
+      </div>
+
+      <div class="shotsec" id="cmpsec" role="group" aria-labelledby="h-cmp" hidden>
+        <h2 id="h-cmp">Compare groups</h2>
+        <div class="tablewrap">
+          <table class="cmp">
+            <thead>
+              <tr><th scope="col">Group</th><th scope="col">Cartridge</th><th scope="col">Distance</th><th scope="col">Shots</th><th scope="col">Size, MOA</th><th scope="col">Center, MOA</th></tr>
+            </thead>
+            <tbody id="cmpbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <section aria-labelledby="h-setup">
+        <h2 id="h-setup">Setup</h2>
+        <div class="row">
+          <div class="field full">
+            <label for="gname">Group name</label>
+            <input id="gname" type="text" maxlength="40" autocomplete="off" placeholder="Group 1">
+          </div>
+          <div class="field">
+            <label for="dist">Distance</label>
+            <input id="dist" type="number" inputmode="decimal" min="1" max="5000" step="1" value="100">
+          </div>
+          <div class="field">
+            <label for="unit">Unit</label>
+            <select id="unit">
+              <option value="yd">yards</option>
+              <option value="m">meters</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cunit">Scope units</label>
+            <select id="cunit">
+              <option value="mrad">MRAD</option>
+              <option value="moa">MOA</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="click">Click value</label>
+            <select id="click"></select>
+          </div>
+        </div>
+        <div class="btns setbtns">
+          <button type="button" class="btn quiet" id="delgrp" hidden>Delete group</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-load">
+        <h2 id="h-load">Cartridge</h2>
+        <div class="row">
+          <div class="field full">
+            <label for="ld-cal">Caliber</label>
+            <input id="ld-cal" type="text" list="dl-cal" autocomplete="off" placeholder="6.5 Creedmoor">
+          </div>
+          <div class="field">
+            <label for="ld-brand">Brand</label>
+            <input id="ld-brand" type="text" autocomplete="off" placeholder="Hornady">
+          </div>
+          <div class="field">
+            <label for="ld-type">Bullet type</label>
+            <input id="ld-type" type="text" list="dl-type" autocomplete="off" placeholder="ELD Match">
+          </div>
+          <div class="field">
+            <label for="ld-gr">Weight (grains)</label>
+            <input id="ld-gr" type="number" inputmode="decimal" min="1" max="1000" step="any" placeholder="140">
+          </div>
+          <div class="field">
+            <label for="ld-fps">Velocity (fps)</label>
+            <input id="ld-fps" type="number" inputmode="decimal" min="1" max="5000" step="any" placeholder="2700">
+          </div>
+          <div class="field full">
+            <label for="ld-notes">Notes</label>
+            <input id="ld-notes" type="text" autocomplete="off" placeholder="Lot number, rifle, conditions">
+          </div>
+        </div>
+        <datalist id="dl-cal">
+          <option value=".22 LR"></option><option value=".223 Remington"></option><option value="5.56x45mm NATO"></option>
+          <option value=".243 Winchester"></option><option value="6mm Creedmoor"></option><option value="6.5 Creedmoor"></option>
+          <option value="6.5 PRC"></option><option value=".270 Winchester"></option><option value="7mm Remington Magnum"></option>
+          <option value=".308 Winchester"></option><option value="7.62x51mm NATO"></option><option value=".30-06 Springfield"></option>
+          <option value=".300 Winchester Magnum"></option><option value=".300 PRC"></option><option value=".338 Lapua Magnum"></option>
+          <option value=".300 Blackout"></option><option value="9mm Luger"></option><option value=".45 ACP"></option>
+        </datalist>
+        <datalist id="dl-type">
+          <option value="FMJ"></option><option value="Hollow Point"></option><option value="BTHP"></option>
+          <option value="Soft Point"></option><option value="Polymer Tip"></option><option value="ELD Match"></option>
+          <option value="ELD-X"></option><option value="A-Max"></option><option value="SMK"></option>
+          <option value="TMK"></option><option value="Berger Hybrid"></option><option value="Partition"></option>
+          <option value="Monolithic"></option>
+        </datalist>
+      </section>
+
+      <section aria-labelledby="h-group">
+        <h2 id="h-group">Group</h2>
+        <p class="lsum" id="lsum"></p>
+        <div class="big"><span id="gsize">&mdash;</span><small>MOA</small></div>
+        <p class="sub" id="gsub"></p>
+        <dl class="stats">
+          <div><dt>Mean radius</dt><dd id="mr">&mdash;</dd></div>
+          <div><dt>Width &times; height</dt><dd id="wh">&mdash;</dd></div>
+          <div><dt>Group center</dt><dd id="gc">&mdash;</dd></div>
+        </dl>
+        <div class="dial" id="dial" hidden>
+          <div class="t">Dial to center</div>
+          <p id="dwind"></p>
+          <p id="delev"></p>
+        </div>
+      </section>
+
+      <section>
+        <p class="note">The grid is printed at a fixed size, so its MOA values change with distance. Groups use the widest center-to-center spread. Scope clicks can be set in MRAD or MOA, where 1 MRAD is 3.438 MOA. Dial directions move the point of impact toward the center.</p>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  var S = 1000, PAD = 74, N = 26, CELL = (S - 2 * PAD) / N, MOA = CELL * 4, C = S / 2, LIM = 3.25;
+  var KEY = 'moa-grid-target-v1';
+  var svg = $('target');
+
+  /* state.shots, dist, unit, load and example are the working copy of the active group.
+     commit() writes them back into state.groups[state.cur]; adopt(i) loads group i into them. */
+  var state = { shots: [], dist: 100, unit: 'yd', cunit: 'mrad', cval: 0.1, example: false, load: {}, groups: [], cur: 0 };
+  var MOA_PER_MRAD = 3.43775, MAXG = 12;
+  var LOAD_KEYS = ['cal', 'brand', 'type', 'gr', 'fps', 'notes'];
+  var CLICKS = { mrad: [0.05, 0.1, 0.2, 0.25], moa: [0.125, 0.25, 0.5, 1] };
+  var DEFAULT_CLICK = { mrad: 0.1, moa: 0.25 };
+  function clickLabel(u, v) {
+    if (u === 'moa') return ({ 0.125: '1/8', 0.25: '1/4', 0.5: '1/2', 1: '1' }[v] || v) + ' MOA';
+    return v + ' MRAD';
+  }
+  function clickMoa() { return state.cunit === 'moa' ? state.cval : state.cval * MOA_PER_MRAD; }
+  function fillClick() {
+    var h = '';
+    CLICKS[state.cunit].forEach(function (v) {
+      h += '<option value="' + v + '"' + (v === state.cval ? ' selected' : '') + '>' + clickLabel(state.cunit, v) + '</option>';
+    });
+    $('click').innerHTML = h;
+    $('click').value = String(state.cval);
+    $('cunit').value = state.cunit;
+  }
+
+  function cleanLoad(o) {
+    var r = {};
+    if (o && typeof o === 'object') LOAD_KEYS.forEach(function (k) { if (typeof o[k] === 'string') r[k] = o[k].slice(0, 120); });
+    return r;
+  }
+  function cleanShots(a) {
+    if (!Array.isArray(a)) return [];
+    return a.filter(function (s) { return s && isFinite(s.x) && isFinite(s.y); }).slice(0, 30)
+      .map(function (s) { return { x: +s.x, y: +s.y }; });
+  }
+  function cleanGroup(g, i) {
+    g = g || {};
+    return {
+      name: typeof g.name === 'string' ? g.name.slice(0, 40) : 'Group ' + (i + 1),
+      shots: cleanShots(g.shots),
+      dist: isFinite(g.dist) && g.dist > 0 ? +g.dist : 100,
+      unit: g.unit === 'm' ? 'm' : 'yd',
+      load: cleanLoad(g.load),
+      example: !!g.example
+    };
+  }
+  function displayName(g, i) { return (g.name && g.name.trim()) || ('Group ' + (i + 1)); }
+  function commit() {
+    var g = state.groups[state.cur];
+    if (!g) return;
+    g.shots = state.shots; g.dist = state.dist; g.unit = state.unit; g.load = state.load; g.example = state.example;
+  }
+  function adopt(i) {
+    var g = state.groups[i];
+    state.cur = i;
+    state.shots = g.shots; state.dist = g.dist; state.unit = g.unit; state.load = g.load; state.example = g.example;
+  }
+
+  state.groups = [{
+    name: 'Group 1',
+    shots: [
+      { x: -0.62, y: 0.41 }, { x: -0.38, y: 0.74 }, { x: -0.79, y: 0.55 },
+      { x: -0.52, y: 0.25 }, { x: -0.30, y: 0.52 }
+    ],
+    dist: 100, unit: 'yd', load: {}, example: true
+  }];
+
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      /* Older saves hold a single group at the top level. */
+      var gs = Array.isArray(saved.groups) ? saved.groups : (Array.isArray(saved.shots) ? [saved] : null);
+      if (gs && gs.length) {
+        state.groups = gs.slice(0, MAXG).map(cleanGroup);
+        state.cur = Math.min(Math.max(parseInt(saved.cur, 10) || 0, 0), state.groups.length - 1);
+      }
+      if (saved.cunit === 'moa' || saved.cunit === 'mrad') {
+        state.cunit = saved.cunit;
+        state.cval = CLICKS[state.cunit].indexOf(+saved.cval) !== -1 ? +saved.cval : DEFAULT_CLICK[state.cunit];
+      } else if (isFinite(saved.clickMrad) && saved.clickMrad > 0) {
+        /* Older saves stored the click value in MRAD only. */
+        state.cval = CLICKS.mrad.indexOf(+saved.clickMrad) !== -1 ? +saved.clickMrad : 0.1;
+      }
+    }
+  } catch (e) {}
+  adopt(state.cur);
+
+  function save() {
+    commit();
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ groups: state.groups, cur: state.cur, cunit: state.cunit, cval: state.cval }));
+    } catch (e) {}
+  }
+
+  var px = function (m) { return C + m * MOA; };
+  var py = function (m) { return C - m * MOA; };
+
+  /* Shots are stored in grid units: the grid is printed at a fixed size where one big square
+     is 1.047 in, which is 1 MOA at 100 yd. MOA at any other distance is grid units x (100 / yards). */
+  function yds() { return state.unit === 'm' ? state.dist * 1.09361 : state.dist; }
+  function kk() { return 100 / yds(); }
+  function fmtv(v) { return parseFloat(v.toPrecision(3)).toString(); }
+
+  /* ---------- Target drawing ---------- */
+  function buildTarget() {
+    var mn = '', wh = '', ax = '', lb = '';
+    var frac = ['', '¼', '½', '¾'];
+    var kz = kk(), scaled = Math.abs(kz - 1) > 1e-9, cls = scaled ? 'lbl sm' : 'lbl';
+    for (var i = 0; i <= N; i++) {
+      var pos = PAD + i * CELL, k = i - N / 2, n = Math.abs(k);
+      var line = '<line x1="' + pos + '" y1="' + PAD + '" x2="' + pos + '" y2="' + (S - PAD) + '"/>' +
+                 '<line x1="' + PAD + '" y1="' + pos + '" x2="' + (S - PAD) + '" y2="' + pos + '"/>';
+      if (k === 0) ax += line; else if (n % 4 === 0) wh += line; else mn += line;
+      var t = scaled ? (n % 2 === 0 ? fmtv(n / 4 * kz) : '') : ((n % 4 === 0) ? String(n / 4) : frac[n % 4]);
+      var lo = PAD - 30, hi = S - PAD + 30;
+      if (!t) continue;
+      lb += '<text class="' + cls + '" x="' + pos + '" y="' + lo + '">' + t + '</text>' +
+            '<text class="' + cls + '" x="' + pos + '" y="' + hi + '">' + t + '</text>' +
+            '<text class="' + cls + '" x="' + lo + '" y="' + pos + '">' + t + '</text>' +
+            '<text class="' + cls + '" x="' + hi + '" y="' + pos + '">' + t + '</text>';
+    }
+    var D = 0.9 * MOA, d = 0.36 * MOA, r = 0.5 * MOA;
+    var h = '<rect class="paper" x="0" y="0" width="' + S + '" height="' + S + '"/>' +
+      '<g class="mn">' + mn + '</g><g class="wh">' + wh + '</g><g class="ax">' + ax + '</g>' +
+      '<rect class="frame" x="8" y="8" width="' + (S - 16) + '" height="' + (S - 16) + '"/>' +
+      lb +
+      '<polygon class="dia" points="' + C + ',' + (C - D) + ' ' + (C + D) + ',' + C + ' ' + C + ',' + (C + D) + ' ' + (C - D) + ',' + C + '"/>' +
+      '<circle class="ring" cx="' + C + '" cy="' + C + '" r="' + r + '"/>' +
+      '<polygon class="core" points="' + C + ',' + (C - d) + ' ' + (C + d) + ',' + C + ' ' + C + ',' + (C + d) + ' ' + (C - d) + ',' + C + '"/>' +
+      '<g class="core-x"><line x1="' + (C - d) + '" y1="' + C + '" x2="' + (C + d) + '" y2="' + C + '"/><line x1="' + C + '" y1="' + (C - d) + '" x2="' + C + '" y2="' + (C + d) + '"/></g>' +
+      '<g id="grp"></g><g id="shots"></g>';
+    svg.innerHTML = h;
+  }
+
+  function drawShots(st) {
+    var a = 0.14 * MOA, out = '', g = '';
+    state.shots.forEach(function (s, i) {
+      var x = px(s.x), y = py(s.y);
+      var d = 'M' + (x - a) + ' ' + (y - a) + 'L' + (x + a) + ' ' + (y + a) + 'M' + (x - a) + ' ' + (y + a) + 'L' + (x + a) + ' ' + (y - a);
+      out += '<g><path class="halo" d="' + d + '"/><path class="mark" d="' + d + '"/>' +
+             '<text class="num" x="' + (x + a + 5) + '" y="' + (y - a - 2) + '">' + (i + 1) + '</text></g>';
+    });
+    if (st && state.shots.length > 1) {
+      var cx = px(st.cx), cy = py(st.cy), R = st.maxR * MOA;
+      g += '<line class="gline" x1="' + C + '" y1="' + C + '" x2="' + cx + '" y2="' + cy + '"/>' +
+           '<circle class="gcirc" cx="' + cx + '" cy="' + cy + '" r="' + R + '"/>';
+    }
+    if (st) {
+      var cx2 = px(st.cx), cy2 = py(st.cy);
+      g += '<circle class="gctr" cx="' + cx2 + '" cy="' + cy2 + '" r="10"/>' +
+           '<path class="gctr" d="M' + (cx2 - 18) + ' ' + cy2 + 'H' + (cx2 + 18) + 'M' + cx2 + ' ' + (cy2 - 18) + 'V' + (cy2 + 18) + '"/>';
+    }
+    $('grp').innerHTML = g;
+    $('shots').innerHTML = out;
+  }
+
+  /* ---------- Math ---------- */
+  function inPerMoa() {
+    var yd = state.unit === 'm' ? state.dist * 1.09361 : state.dist;
+    return 1.047 * yd / 100;
+  }
+  function len(moa) {
+    var inch = moa * inPerMoa();
+    return state.unit === 'm' ? (inch * 2.54).toFixed(1) + ' cm' : inch.toFixed(2) + ' in';
+  }
+  function stats(arr) {
+    var shots = arr || state.shots;
+    var n = shots.length;
+    if (!n) return null;
+    var sx = 0, sy = 0, i, j;
+    shots.forEach(function (s) { sx += s.x; sy += s.y; });
+    var cx = sx / n, cy = sy / n, maxR = 0, sumR = 0, es = 0;
+    var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+    for (i = 0; i < n; i++) {
+      var s = shots[i], r = Math.hypot(s.x - cx, s.y - cy);
+      maxR = Math.max(maxR, r); sumR += r;
+      minx = Math.min(minx, s.x); maxx = Math.max(maxx, s.x);
+      miny = Math.min(miny, s.y); maxy = Math.max(maxy, s.y);
+      for (j = i + 1; j < n; j++) es = Math.max(es, Math.hypot(s.x - shots[j].x, s.y - shots[j].y));
+    }
+    return { n: n, cx: cx, cy: cy, maxR: maxR, meanR: sumR / n, es: es, w: maxx - minx, h: maxy - miny };
+  }
+  var f2 = function (v) { return v.toFixed(2); };
+  function side(v, pos, neg) { return f2(Math.abs(v)) + ' ' + (v >= 0 ? pos : neg); }
+  function clicksText(v, pos, neg) {
+    var moa = Math.abs(v);
+    var c = Math.round(moa / clickMoa());
+    if (c === 0) return 'On target';
+    var amt = state.cunit === 'moa' ? moa.toFixed(2) + ' MOA' : (moa / MOA_PER_MRAD).toFixed(2) + ' MRAD';
+    return (v > 0 ? pos : neg) + ' ' + c + (c === 1 ? ' click' : ' clicks') + ' <span>(' + amt + ')</span>';
+  }
+
+  /* ---------- Render ---------- */
+  function render() {
+    commit();
+    var raw = stats();
+    drawShots(raw);
+    var k = kk(), unitTxt = state.unit === 'm' ? 'm' : 'yd';
+    var st = raw && { n: raw.n, cx: raw.cx * k, cy: raw.cy * k, meanR: raw.meanR * k, es: raw.es * k, w: raw.w * k, h: raw.h * k };
+
+    $('scale').textContent = 'At ' + state.dist + ' ' + unitTxt + ', each big square is ' + fmtv(k) + ' MOA (1.05 in on paper).';
+
+    $('gsize').textContent = st && st.n > 1 ? f2(st.es) : '—';
+    $('gsub').textContent = !st ? 'Place a shot to begin.' :
+      st.n < 2 ? 'Place a second shot to measure group size.' :
+      'Extreme spread, ' + len(st.es) + ' at ' + state.dist + ' ' + unitTxt;
+    $('mr').textContent = st && st.n > 1 ? f2(st.meanR) + ' MOA' : '—';
+    $('wh').textContent = st && st.n > 1 ? f2(st.w) + ' × ' + f2(st.h) + ' MOA' : '—';
+    $('gc').textContent = st ? side(st.cx, 'R', 'L') + ', ' + side(st.cy, 'U', 'D') : '—';
+
+    $('dial').hidden = !st;
+    if (st) {
+      $('dwind').innerHTML = '↔ ' + clicksText(-st.cx, 'Right', 'Left');
+      $('delev').innerHTML = '↕ ' + clicksText(-st.cy, 'Up', 'Down');
+    }
+
+    var L = state.load, parts = [];
+    ['cal', 'brand', 'type'].forEach(function (k) { if (L[k]) parts.push(L[k]); });
+    if (L.gr) parts.push(L.gr + ' gr');
+    if (L.fps) parts.push(L.fps + ' fps');
+    $('lsum').textContent = parts.join(' · ') + (L.notes ? (parts.length ? '\n' : '') + L.notes : '');
+
+    $('chip').hidden = !state.example;
+    $('empty').hidden = state.shots.length > 0;
+    var li = '';
+    state.shots.forEach(function (s, i) {
+      li += '<li><span class="n">' + (i + 1) + '</span><span class="pos">' +
+        side(s.x * k, 'R', 'L') + ' · ' + side(s.y * k, 'U', 'D') + ' MOA</span></li>';
+    });
+    $('list').innerHTML = li;
+    renderTabs();
+    renderCompare();
+    save();
+  }
+
+  function loadParts(L) {
+    var p = [];
+    ['cal', 'brand', 'type'].forEach(function (k) { if (L[k]) p.push(L[k]); });
+    if (L.gr) p.push(L.gr + ' gr');
+    if (L.fps) p.push(L.fps + ' fps');
+    return p;
+  }
+
+  function renderTabs() {
+    var h = '';
+    state.groups.forEach(function (g, i) {
+      h += '<button type="button" class="tab" role="tab" aria-selected="' + (i === state.cur) + '" data-i="' + i + '">' + esc(displayName(g, i)) + '</button>';
+    });
+    if (state.groups.length < MAXG) h += '<button type="button" class="tab add" id="addgrp">+ Add group</button>';
+    $('tabs').innerHTML = h;
+    $('delgrp').hidden = state.groups.length < 2;
+    $('saveall').hidden = !dl || state.groups.length < 2;
+  }
+
+  function renderCompare() {
+    var multi = state.groups.length > 1;
+    $('cmpsec').hidden = !multi;
+    if (!multi) return;
+    var rows = state.groups.map(function (g, i) {
+      var st = stats(g.shots), k = 100 / (g.unit === 'm' ? g.dist * 1.09361 : g.dist);
+      return { g: g, i: i, st: st, k: k, es: st && st.n > 1 ? st.es * k : null };
+    });
+    var best = null, count = 0;
+    rows.forEach(function (r) {
+      if (r.es === null) return;
+      count++;
+      if (best === null || r.es < best) best = r.es;
+    });
+    var h = '';
+    rows.forEach(function (r) {
+      var ld = loadParts(r.g.load).join(' · ');
+      var isBest = count > 1 && r.es !== null && r.es === best;
+      h += '<tr' + (r.i === state.cur ? ' class="cur"' : '') + '>' +
+        '<td><button type="button" class="linkbtn" data-i="' + r.i + '">' + esc(displayName(r.g, r.i)) + '</button></td>' +
+        '<td class="ld">' + (ld ? esc(ld) : '—') + '</td>' +
+        '<td class="v">' + r.g.dist + ' ' + (r.g.unit === 'm' ? 'm' : 'yd') + '</td>' +
+        '<td class="v">' + r.g.shots.length + '</td>' +
+        '<td class="v' + (isBest ? ' best' : '') + '">' + (r.es === null ? '—' : f2(r.es)) + (isBest ? '<span class="pill">smallest</span>' : '') + '</td>' +
+        '<td class="v">' + (r.st ? side(r.st.cx * r.k, 'R', 'L') + ', ' + side(r.st.cy * r.k, 'U', 'D') : '—') + '</td></tr>';
+    });
+    $('cmpbody').innerHTML = h;
+  }
+
+  function say(t) { $('status').textContent = t; }
+
+  /* ---------- Interaction ---------- */
+  var down = null;
+  svg.addEventListener('pointerdown', function (e) { down = { x: e.clientX, y: e.clientY }; });
+  svg.addEventListener('pointercancel', function () { down = null; });
+  svg.addEventListener('pointerup', function (e) {
+    if (!down) return;
+    var moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+    down = null;
+    if (moved > 10) return;
+    var pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    var gx = (p.x - C) / MOA, gy = (C - p.y) / MOA;
+    if (Math.abs(gx) > LIM || Math.abs(gy) > LIM) { say('Tap inside the grid to place a shot.'); return; }
+    if (state.example) { state.shots = []; state.example = false; }
+    if (state.shots.length >= 30) { say('The target holds 30 shots. Remove one to add another.'); return; }
+    state.shots.push({ x: Math.round(gx * 1000) / 1000, y: Math.round(gy * 1000) / 1000 });
+    var kp = kk();
+    say('Shot ' + state.shots.length + ' placed: ' + side(gx * kp, 'R', 'L') + ', ' + side(gy * kp, 'U', 'D') + ' MOA.');
+    render();
+  });
+
+  $('undo').addEventListener('click', function () {
+    if (!state.shots.length) return;
+    state.shots.pop();
+    if (!state.shots.length) state.example = false;
+    say('Removed the last shot.');
+    render();
+  });
+  $('clear').addEventListener('click', function () {
+    state.shots = []; state.example = false;
+    say('Target cleared. Tap the grid to mark your first shot.');
+    render();
+  });
+
+  $('dist').addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    if (isFinite(v) && v > 0) { state.dist = v; buildTarget(); render(); }
+  });
+  $('unit').addEventListener('change', function () {
+    var to = this.value;
+    if (to !== state.unit) {
+      state.dist = Math.max(1, Math.round(to === 'm' ? state.dist / 1.09361 : state.dist * 1.09361));
+      state.unit = to;
+      $('dist').value = state.dist;
+      buildTarget();
+      render();
+    }
+  });
+  $('cunit').addEventListener('change', function () {
+    state.cunit = this.value === 'moa' ? 'moa' : 'mrad';
+    state.cval = DEFAULT_CLICK[state.cunit];
+    fillClick();
+    render();
+  });
+  $('click').addEventListener('change', function () {
+    var v = parseFloat(this.value);
+    state.cval = CLICKS[state.cunit].indexOf(v) !== -1 ? v : DEFAULT_CLICK[state.cunit];
+    render();
+  });
+
+  $('dist').value = state.dist;
+  $('unit').value = state.unit;
+  fillClick();
+
+  [['ld-cal', 'cal'], ['ld-brand', 'brand'], ['ld-type', 'type'], ['ld-gr', 'gr'], ['ld-fps', 'fps'], ['ld-notes', 'notes']].forEach(function (p) {
+    var el = $(p[0]);
+    el.value = state.load[p[1]] || '';
+    el.addEventListener('input', function () {
+      state.load[p[1]] = el.value.slice(0, 120);
+      render();
+    });
+  });
+
+  /* ---------- Groups ---------- */
+  function syncInputs() {
+    $('dist').value = state.dist;
+    $('unit').value = state.unit;
+    $('gname').value = state.groups[state.cur].name;
+    [['ld-cal', 'cal'], ['ld-brand', 'brand'], ['ld-type', 'type'], ['ld-gr', 'gr'], ['ld-fps', 'fps'], ['ld-notes', 'notes']].forEach(function (p) {
+      $(p[0]).value = state.load[p[1]] || '';
+    });
+  }
+  var delTimer = null;
+  function resetDel() {
+    clearTimeout(delTimer); delTimer = null;
+    $('delgrp').textContent = 'Delete group';
+  }
+  function switchTo(i) {
+    if (i === state.cur || !state.groups[i]) return;
+    commit();
+    resetDel();
+    adopt(i);
+    syncInputs();
+    buildTarget();
+    render();
+    say('Showing ' + displayName(state.groups[i], i) + '.');
+  }
+  function addGroup() {
+    if (state.groups.length >= MAXG) { say('You can track up to ' + MAXG + ' groups.'); return; }
+    commit();
+    resetDel();
+    state.groups.push({
+      name: 'Group ' + (state.groups.length + 1), shots: [], dist: state.dist, unit: state.unit,
+      load: cleanLoad(state.load), example: false
+    });
+    adopt(state.groups.length - 1);
+    syncInputs();
+    buildTarget();
+    render();
+    say('Added ' + displayName(state.groups[state.cur], state.cur) + '. It starts with the same distance and cartridge. Tap the grid to mark shots.');
+  }
+
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'addgrp') addGroup();
+    else if (b.hasAttribute('data-i')) switchTo(+b.getAttribute('data-i'));
+  });
+  $('cmpbody').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-i]');
+    if (b) switchTo(+b.getAttribute('data-i'));
+  });
+  $('gname').addEventListener('input', function () {
+    state.groups[state.cur].name = this.value.slice(0, 40);
+    render();
+  });
+  $('delgrp').addEventListener('click', function () {
+    if (state.groups.length < 2) return;
+    if (!delTimer) {
+      this.textContent = 'Confirm delete';
+      delTimer = setTimeout(resetDel, 4000);
+      return;
+    }
+    resetDel();
+    commit();
+    var name = displayName(state.groups[state.cur], state.cur);
+    state.groups.splice(state.cur, 1);
+    adopt(Math.min(state.cur, state.groups.length - 1));
+    syncInputs();
+    buildTarget();
+    render();
+    say('Deleted ' + name + '.');
+  });
+  syncInputs();
+
+  /* ---------- Save as image ---------- */
+  var dl = null;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function wrapText(text, max) {
+    var out = [];
+    String(text).split('\n').forEach(function (par) {
+      var line = '';
+      par.split(' ').forEach(function (w) {
+        if (line && (line + ' ' + w).length > max) { out.push(line); line = w; }
+        else line = line ? line + ' ' + w : w;
+      });
+      if (line) out.push(line);
+    });
+    return out;
+  }
+  function pad2(v) { return (v < 10 ? '0' : '') + v; }
+
+  function exportImage() {
+    if (!dl) return;
+    var P = { paper: '#fbfbf8', ink: '#12181a', shot: '#d02f0c', grp: '#1757b8', mute: '#566468' };
+    var L = state.load, n = state.shots.length, now = new Date();
+    var parts = [];
+    ['cal', 'brand', 'type'].forEach(function (k) { if (L[k]) parts.push(L[k]); });
+    if (L.gr) parts.push(L.gr + ' gr');
+    if (L.fps) parts.push(L.fps + ' fps');
+    var date = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    var lines = [];
+    var gName = displayName(state.groups[state.cur], state.cur);
+    lines.push({ t: gName, s: 28, w: 700, c: P.ink });
+    if (parts.length) lines.push({ t: parts.join(' · '), s: 24, w: 600, c: P.ink });
+    if (L.notes) lines.push({ t: L.notes, s: 22, w: 400, c: P.mute });
+    lines.push({ t: state.dist + ' ' + (state.unit === 'm' ? 'm' : 'yd') + ' · ' + n + (n === 1 ? ' shot' : ' shots') + ' · ' + date, s: 22, w: 400, c: P.mute });
+    if (n > 1) lines.push({ t: 'Group ' + $('gsize').textContent + ' MOA · mean radius ' + $('mr').textContent + ' · ' + $('wh').textContent, s: 24, w: 600, c: P.ink });
+    if (n > 0) {
+      lines.push({ t: 'Center ' + $('gc').textContent, s: 24, w: 400, c: P.ink });
+      var strip = function (t) { return t.replace(/^[^A-Za-z0-9]+/, ''); };
+      lines.push({ t: 'Dial ' + strip($('dwind').textContent) + ' · ' + strip($('delev').textContent), s: 24, w: 400, c: P.ink });
+    }
+
+    var y = 22, txt = '';
+    lines.forEach(function (ln) {
+      wrapText(ln.t, Math.floor(920 / (ln.s * 0.54))).forEach(function (row) {
+        y += ln.s * 1.3;
+        txt += '<text x="40" y="' + y.toFixed(1) + '" font-family="Arial, Helvetica, sans-serif" font-size="' + ln.s + '" font-weight="' + ln.w + '" fill="' + ln.c + '">' + esc(row) + '</text>';
+      });
+    });
+    var H = Math.ceil(y + 24), T = H + S;
+
+    var css = '.paper{fill:' + P.paper + '}.frame{fill:none;stroke:' + P.ink + ';stroke-width:12}' +
+      '.mn{stroke:' + P.ink + ';stroke-width:1}.wh{stroke:' + P.ink + ';stroke-width:2.6}.ax{stroke:' + P.ink + ';stroke-width:6}' +
+      '.lbl{font:500 24px "Arial Narrow",Arial,sans-serif;fill:' + P.ink + ';text-anchor:middle;dominant-baseline:central}.lbl.sm{font-size:20px}' +
+      '.dia{fill:' + P.ink + '}.ring{fill:none;stroke:' + P.paper + ';stroke-width:4}.core{fill:' + P.paper + '}.core-x{stroke:' + P.ink + ';stroke-width:2}' +
+      '.halo{stroke:' + P.paper + ';stroke-width:13;fill:none;stroke-linecap:round}.mark{stroke:' + P.shot + ';stroke-width:5.5;fill:none;stroke-linecap:round}' +
+      '.num{font:600 24px Arial,sans-serif;fill:' + P.shot + ';paint-order:stroke;stroke:' + P.paper + ';stroke-width:5px}' +
+      '.gcirc{fill:' + P.grp + ';fill-opacity:.08;stroke:' + P.grp + ';stroke-width:3;stroke-dasharray:10 8}' +
+      '.gline{stroke:' + P.grp + ';stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.8}.gctr{fill:none;stroke:' + P.grp + ';stroke-width:4}';
+
+    var ser = new XMLSerializer(), inner = '';
+    Array.prototype.forEach.call(svg.childNodes, function (nd) { inner += ser.serializeToString(nd); });
+    var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + S + '" height="' + T + '" viewBox="0 0 ' + S + ' ' + T + '">' +
+      '<style>' + css + '</style><rect width="' + S + '" height="' + T + '" fill="' + P.paper + '"/>' + txt +
+      '<g transform="translate(0,' + H + ')">' + inner + '</g></svg>';
+
+    var img = new Image();
+    img.onload = function () {
+      var cv = document.createElement('canvas');
+      cv.width = S * 2; cv.height = T * 2;
+      var cx = cv.getContext('2d');
+      cx.fillStyle = P.paper;
+      cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(function (blob) {
+        if (!blob) { say('Could not create the image.'); return; }
+        var slug = gName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'target';
+        var name = 'moa-' + slug + '-' + now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate()) + '.png';
+        dl.save({ filename: name, data: blob }).then(function () {
+          say('Image saved.');
+        }, function (err) {
+          var c = err && err.code;
+          say(c === 'declined' ? 'Save canceled.' :
+              c === 'rate_limited' ? 'A save is already waiting for your answer.' :
+              'This view could not save the image.');
+        });
+      }, 'image/png');
+    };
+    img.onerror = function () { say('Could not create the image.'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out);
+  }
+
+  /* ---------- Save all groups ---------- */
+  function expCss(P) {
+    return '.paper{fill:' + P.paper + '}.frame{fill:none;stroke:' + P.ink + ';stroke-width:12}' +
+      '.mn{stroke:' + P.ink + ';stroke-width:1}.wh{stroke:' + P.ink + ';stroke-width:2.6}.ax{stroke:' + P.ink + ';stroke-width:6}' +
+      '.lbl{font:500 24px "Arial Narrow",Arial,sans-serif;fill:' + P.ink + ';text-anchor:middle;dominant-baseline:central}.lbl.sm{font-size:20px}' +
+      '.dia{fill:' + P.ink + '}.ring{fill:none;stroke:' + P.paper + ';stroke-width:4}.core{fill:' + P.paper + '}.core-x{stroke:' + P.ink + ';stroke-width:2}' +
+      '.halo{stroke:' + P.paper + ';stroke-width:13;fill:none;stroke-linecap:round}.mark{stroke:' + P.shot + ';stroke-width:5.5;fill:none;stroke-linecap:round}' +
+      '.num{font:600 24px Arial,sans-serif;fill:' + P.shot + ';paint-order:stroke;stroke:' + P.paper + ';stroke-width:5px}' +
+      '.gcirc{fill:' + P.grp + ';fill-opacity:.08;stroke:' + P.grp + ';stroke-width:3;stroke-dasharray:10 8}' +
+      '.gline{stroke:' + P.grp + ';stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.8}.gctr{fill:none;stroke:' + P.grp + ';stroke-width:4}';
+  }
+  function targetInner() {
+    var ser = new XMLSerializer(), s = '';
+    Array.prototype.forEach.call(svg.childNodes, function (nd) { s += ser.serializeToString(nd); });
+    return s;
+  }
+  function textBlock(lines, x, y0, width) {
+    var y = y0, txt = '';
+    lines.forEach(function (ln) {
+      wrapText(ln.t, Math.max(10, Math.floor(width / (ln.s * 0.48)))).forEach(function (row) {
+        y += ln.s * 1.3;
+        txt += '<text x="' + x + '" y="' + y.toFixed(1) + '" font-family="Arial, Helvetica, sans-serif" font-size="' + ln.s +
+          '" font-weight="' + ln.w + '" fill="' + ln.c + '">' + esc(row) + '</text>';
+      });
+    });
+    return { txt: txt, h: y - y0 + 8 };
+  }
+  function plain(h) { return h.replace(/<[^>]*>/g, ''); }
+
+  function savePng(svgText, W, T, scale, filename, paper) {
+    var img = new Image();
+    img.onload = function () {
+      var cv = document.createElement('canvas');
+      cv.width = W * scale; cv.height = T * scale;
+      var cx = cv.getContext('2d');
+      cx.fillStyle = paper;
+      cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(function (blob) {
+        if (!blob) { say('Could not create the image.'); return; }
+        dl.save({ filename: filename, data: blob }).then(function () {
+          say('Image saved.');
+        }, function (err) {
+          var c = err && err.code;
+          say(c === 'declined' ? 'Save canceled.' :
+              c === 'rate_limited' ? 'A save is already waiting for your answer.' :
+              'This view could not save the image.');
+        });
+      }, 'image/png');
+    };
+    img.onerror = function () { say('Could not create the image.'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+  }
+
+  function exportAll() {
+    if (!dl || state.groups.length < 2) return;
+    commit();
+    var P = { paper: '#fbfbf8', ink: '#12181a', shot: '#d02f0c', grp: '#1757b8', mute: '#566468' };
+    var origin = state.cur, now = new Date(), items = [];
+    try {
+      state.groups.forEach(function (g, i) {
+        adopt(i);
+        buildTarget();
+        var st = stats();
+        drawShots(st);
+        items.push({ g: g, i: i, st: st, k: kk(), inner: targetInner() });
+      });
+    } finally {
+      adopt(origin);
+      buildTarget();
+      render();
+    }
+
+    var best = null, bestName = '', count = 0;
+    items.forEach(function (it) {
+      if (!it.st || it.st.n < 2) return;
+      var es = it.st.es * it.k;
+      count++;
+      if (best === null || es < best) { best = es; bestName = displayName(it.g, it.i); }
+    });
+
+    items.forEach(function (it) {
+      var g = it.g, k = it.k, st = it.st, n = g.shots.length, L = g.load, parts = loadParts(L);
+      it.top = [{ t: displayName(g, it.i), s: 28, w: 700, c: P.ink }];
+      if (parts.length) it.top.push({ t: parts.join(' · '), s: 22, w: 600, c: P.ink });
+      it.top.push({ t: g.dist + ' ' + (g.unit === 'm' ? 'm' : 'yd') + ' · ' + n + (n === 1 ? ' shot' : ' shots'), s: 20, w: 400, c: P.mute });
+      if (L.notes) it.top.push({ t: L.notes, s: 20, w: 400, c: P.mute });
+      it.bot = [];
+      if (st && st.n > 1) it.bot.push({ t: 'Group ' + f2(st.es * k) + ' MOA · mean radius ' + f2(st.meanR * k) + ' MOA', s: 24, w: 700, c: P.ink });
+      else it.bot.push({ t: n ? 'One shot, no group size yet' : 'No shots', s: 24, w: 700, c: P.mute });
+      if (st) {
+        it.bot.push({ t: 'Center ' + side(st.cx * k, 'R', 'L') + ', ' + side(st.cy * k, 'U', 'D') + ' MOA', s: 22, w: 400, c: P.ink });
+        it.bot.push({ t: 'Dial ' + plain(clicksText(-st.cx * k, 'Right', 'Left')) + ' · ' + plain(clicksText(-st.cy * k, 'Up', 'Down')), s: 22, w: 400, c: P.ink });
+      }
+    });
+
+    var M = 40, COL = 660, GAP = 40, cols = Math.min(2, items.length), W = M + cols * (COL + GAP);
+    var date = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    var head = [
+      { t: 'MOA grid target · all groups', s: 34, w: 700, c: P.ink },
+      { t: date + ' · ' + items.length + ' groups · scope clicks ' + clickLabel(state.cunit, state.cval), s: 22, w: 400, c: P.mute }
+    ];
+    if (count > 1) head.push({ t: 'Smallest group: ' + bestName + ', ' + f2(best) + ' MOA', s: 24, w: 600, c: P.ink });
+    var hb = textBlock(head, M, 22, W - 2 * M);
+    var y = 22 + hb.h + 24, body = hb.txt;
+
+    for (var r = 0; r < items.length; r += cols) {
+      var row = items.slice(r, r + cols);
+      var hT = 0, hB = 0;
+      row.forEach(function (it) {
+        hT = Math.max(hT, textBlock(it.top, 0, 0, COL).h);
+        hB = Math.max(hB, textBlock(it.bot, 0, 0, COL).h);
+      });
+      row.forEach(function (it, c) {
+        var x = M + c * (COL + GAP);
+        body += textBlock(it.top, x, y, COL).txt +
+          '<svg x="' + x + '" y="' + (y + hT) + '" width="' + COL + '" height="' + COL + '" viewBox="0 0 ' + S + ' ' + S + '">' + it.inner + '</svg>' +
+          textBlock(it.bot, x, y + hT + COL + 6, COL).txt;
+      });
+      y += hT + COL + 6 + hB + 36;
+    }
+    var T = Math.ceil(y);
+
+    var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + T + '" viewBox="0 0 ' + W + ' ' + T + '">' +
+      '<style>' + expCss(P) + '</style><rect width="' + W + '" height="' + T + '" fill="' + P.paper + '"/>' + body + '</svg>';
+    var name = 'moa-all-groups-' + now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate()) + '.png';
+    savePng(out, W, T, items.length > 6 ? 1 : 2, name, P.paper);
+  }
+
+  $('save').addEventListener('click', exportImage);
+  $('saveall').addEventListener('click', exportAll);
+  /* Outside the claude.ai viewer (the file opened directly in a browser) there is no window.claude,
+     so a normal download link works. Inside the viewer, saving goes through the downloads capability. */
+  function localDownloads() {
+    return {
+      save: function (req) {
+        return new Promise(function (resolve, reject) {
+          try {
+            var url = URL.createObjectURL(req.data);
+            var a = document.createElement('a');
+            a.href = url; a.download = req.filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+            resolve({ status: 'saved' });
+          } catch (e) { reject({ code: 'unavailable' }); }
+        });
+      }
+    };
+  }
+  try {
+    if (window.claude && window.claude.use) {
+      window.claude.use('downloads').then(function (d) {
+        if (d) { dl = d; $('save').hidden = false; renderTabs(); }
+      }, function () {});
+    } else if (!window.claude) {
+      dl = localDownloads();
+      $('save').hidden = false;
+      renderTabs();
+    }
+  } catch (e) {}
+
+  buildTarget();
+  render();
+})();
+</script>
+
+</body></html>
