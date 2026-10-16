@@ -1,12 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Mark each shot on a MOA grid target. Get group size in MOA, scope corrections in MRAD or MOA, and export results as an image or JSON.">
-<meta property="og:title" content="MOA Grid Target">
-<meta property="og:description" content="Mark each shot on a MOA grid target. Get group size in MOA, scope corrections in MRAD or MOA, and export results as an image or JSON.">
-<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>MOA Grid Target</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,6 +105,10 @@
     min-height: 40px;
     width: 100%;
   }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink); cursor: pointer; }
+  input[type="checkbox"] { width: 18px; min-height: 0; height: 18px; padding: 0; accent-color: var(--ink); flex: none; }
+  .gridbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .shotcount { margin-left: auto; font: 500 13px var(--f-mono); color: var(--muted); }
   input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--grp); outline-offset: 2px; }
 
   .big { font: 600 68px/0.95 var(--f-display); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
@@ -201,8 +197,6 @@
   }
 </style>
 
-</head>
-<body>
 <main class="wrap">
   <header>
     <h1>MOA Grid Target</h1>
@@ -213,6 +207,11 @@
     <section class="targetcol">
       <div class="tabs" id="tabs" role="tablist" aria-label="Groups"></div>
       <svg id="target" viewBox="0 0 1000 1000" role="img" aria-label="MOA grid target, 3 and a quarter MOA in each direction from the center"></svg>
+      <div class="gridbar">
+        <button type="button" class="btn" id="undo">Undo last</button>
+        <button type="button" class="btn" id="clear">Clear shots</button>
+        <span class="shotcount" id="shotcount"></span>
+      </div>
       <p class="scale" id="scale"></p>
       <p class="status" id="status" aria-live="polite">Tap inside the grid to mark a shot. Use Undo last to take one back.</p>
 
@@ -258,10 +257,6 @@
         <h2 id="h-shots">Shots</h2>
         <p class="empty" id="empty" hidden>No shots yet. Tap the grid to place your first shot.</p>
         <ol class="shots" id="list"></ol>
-        <div class="btns">
-          <button type="button" class="btn" id="undo">Undo last</button>
-          <button type="button" class="btn" id="clear">Clear shots</button>
-        </div>
         <div class="exports" id="exports" hidden>
           <div class="exrow">
             <span class="exlbl">Export this group</span>
@@ -306,16 +301,20 @@
             <select id="unit">
               <option value="yd">yards</option>
               <option value="m">meters</option>
+              <option value="ft">feet</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field full">
+            <label class="check" for="scopeon"><input id="scopeon" type="checkbox" checked> Show scope adjustments</label>
+          </div>
+          <div class="field" id="f-cunit">
             <label for="cunit">Scope units</label>
             <select id="cunit">
               <option value="mrad">MRAD</option>
               <option value="moa">MOA</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field" id="f-click">
             <label for="click">Click value</label>
             <select id="click"></select>
           </div>
@@ -450,9 +449,13 @@
 
   /* state.shots, dist, unit, load, cond and off are the working copy of the active group.
      commit() writes them back into state.groups[state.cur]; adopt(i) loads group i into them. */
-  var state = { shots: [], dist: 100, unit: 'yd', cunit: 'mrad', cval: 0.1, load: {}, cond: {}, off: [], groups: [], cur: 0 };
+  var state = { shots: [], dist: 100, unit: 'yd', cunit: 'mrad', cval: 0.1, scope: true, load: {}, cond: {}, off: [], groups: [], cur: 0 };
   var MOA_PER_MRAD = 3.43775, MAXG = 12;
   var LOAD_KEYS = ['cal', 'brand', 'type', 'gr', 'fps', 'notes'];
+  var UNIT_YD = { yd: 1, m: 1.09361, ft: 1 / 3 };
+  var UNIT_ABBR = { yd: 'yd', m: 'm', ft: 'ft' };
+  var UNIT_NAME = { yd: 'yards', m: 'meters', ft: 'feet' };
+  function toYd(dist, unit) { return dist * (UNIT_YD[unit] || 1); }
   var CLICKS = { mrad: [0.05, 0.1, 0.2, 0.25], moa: [0.125, 0.25, 0.5, 1] };
   var DEFAULT_CLICK = { mrad: 0.1, moa: 0.25 };
   function clickLabel(u, v) {
@@ -511,7 +514,7 @@
       /* Earlier versions opened with five demo shots flagged as examples. They were never the user's own. */
       shots: g.example ? [] : cleanShots(g.shots),
       dist: isFinite(g.dist) && g.dist > 0 ? +g.dist : 100,
-      unit: g.unit === 'm' ? 'm' : 'yd',
+      unit: UNIT_YD.hasOwnProperty(g.unit) ? g.unit : 'yd',
       load: cleanLoad(g.load),
       cond: cleanCond(g.cond),
       off: cleanOff(g.off)
@@ -540,6 +543,7 @@
         state.groups = gs.slice(0, MAXG).map(cleanGroup);
         state.cur = Math.min(Math.max(parseInt(saved.cur, 10) || 0, 0), state.groups.length - 1);
       }
+      if (saved.scope === false) state.scope = false;
       if (saved.cunit === 'moa' || saved.cunit === 'mrad') {
         state.cunit = saved.cunit;
         state.cval = CLICKS[state.cunit].indexOf(+saved.cval) !== -1 ? +saved.cval : DEFAULT_CLICK[state.cunit];
@@ -554,7 +558,7 @@
   function save() {
     commit();
     try {
-      localStorage.setItem(KEY, JSON.stringify({ groups: state.groups, cur: state.cur, cunit: state.cunit, cval: state.cval }));
+      localStorage.setItem(KEY, JSON.stringify({ groups: state.groups, cur: state.cur, cunit: state.cunit, cval: state.cval, scope: state.scope }));
     } catch (e) {}
   }
 
@@ -563,7 +567,7 @@
 
   /* Shots are stored in grid units: the grid is printed at a fixed size where one big square
      is 1.047 in, which is 1 MOA at 100 yd. MOA at any other distance is grid units x (100 / yards). */
-  function yds() { return state.unit === 'm' ? state.dist * 1.09361 : state.dist; }
+  function yds() { return toYd(state.dist, state.unit); }
   function kk() { return 100 / yds(); }
   function fmtv(v) { return parseFloat(v.toPrecision(3)).toString(); }
 
@@ -622,8 +626,7 @@
 
   /* ---------- Math ---------- */
   function inPerMoa() {
-    var yd = state.unit === 'm' ? state.dist * 1.09361 : state.dist;
-    return 1.047 * yd / 100;
+    return 1.047 * toYd(state.dist, state.unit) / 100;
   }
   function len(moa) {
     var inch = moa * inPerMoa();
@@ -661,7 +664,7 @@
     commit();
     var raw = stats();
     drawShots(raw);
-    var k = kk(), unitTxt = state.unit === 'm' ? 'm' : 'yd';
+    var k = kk(), unitTxt = UNIT_ABBR[state.unit];
     var st = raw && { n: raw.n, cx: raw.cx * k, cy: raw.cy * k, meanR: raw.meanR * k, es: raw.es * k, w: raw.w * k, h: raw.h * k };
 
     $('scale').textContent = 'At ' + state.dist + ' ' + unitTxt + ', each big square is ' + fmtv(k) + ' MOA (1.05 in on paper).';
@@ -675,7 +678,8 @@
     $('wh').textContent = st && st.n > 1 ? f2(st.w) + ' × ' + f2(st.h) + ' MOA' : '—';
     $('gc').textContent = st ? side(st.cx, 'R', 'L') + ', ' + side(st.cy, 'U', 'D') : '—';
 
-    $('dial').hidden = !st;
+    $('dial').hidden = !st || !state.scope;
+    $('shotcount').textContent = shotsText(state.shots.length, state.off.length);
     if (st) {
       $('dwind').innerHTML = '↔ ' + clicksText(-st.cx, 'Right', 'Left');
       $('delev').innerHTML = '↕ ' + clicksText(-st.cy, 'Up', 'Down');
@@ -713,7 +717,7 @@
   function shotsText(n, off) { return n + (n === 1 ? ' shot' : ' shots') + (off ? ' + ' + off + ' off-grid' : ''); }
   function offMoa(o, g) {
     if (o.u === 'moa') return o.amt;
-    var yd = g.unit === 'm' ? g.dist * 1.09361 : g.dist;
+    var yd = toYd(g.dist, g.unit);
     return (o.u === 'cm' ? o.amt / 2.54 : o.amt) / (1.047 * yd / 100);
   }
   function offText(o, g) {
@@ -747,7 +751,7 @@
     $('cmpsec').hidden = !multi;
     if (!multi) return;
     var rows = state.groups.map(function (g, i) {
-      var st = stats(g.shots), k = 100 / (g.unit === 'm' ? g.dist * 1.09361 : g.dist);
+      var st = stats(g.shots), k = 100 / toYd(g.dist, g.unit);
       return { g: g, i: i, st: st, k: k, es: st && st.n > 1 ? st.es * k : null };
     });
     var best = null, count = 0;
@@ -763,7 +767,7 @@
       h += '<tr' + (r.i === state.cur ? ' class="cur"' : '') + '>' +
         '<td><button type="button" class="linkbtn" data-i="' + r.i + '">' + esc(displayName(r.g, r.i)) + '</button></td>' +
         '<td class="ld">' + (ld ? esc(ld) : '—') + '</td>' +
-        '<td class="v">' + r.g.dist + ' ' + (r.g.unit === 'm' ? 'm' : 'yd') + '</td>' +
+        '<td class="v">' + r.g.dist + ' ' + UNIT_ABBR[r.g.unit] + '</td>' +
         '<td class="v">' + r.g.shots.length + (r.g.off.length ? ' + ' + r.g.off.length + ' off' : '') + '</td>' +
         '<td class="v' + (isBest ? ' best' : '') + '">' + (r.es === null ? '—' : f2(r.es)) + (isBest ? '<span class="pill">smallest</span>' : '') + '</td>' +
         '<td class="v">' + (r.st ? side(r.st.cx * r.k, 'R', 'L') + ', ' + side(r.st.cy * r.k, 'U', 'D') : '—') + '</td></tr>';
@@ -811,9 +815,10 @@
     if (isFinite(v) && v > 0) { state.dist = v; buildTarget(); render(); }
   });
   $('unit').addEventListener('change', function () {
-    var to = this.value;
+    var to = UNIT_YD.hasOwnProperty(this.value) ? this.value : 'yd';
     if (to !== state.unit) {
-      state.dist = Math.max(1, Math.round(to === 'm' ? state.dist / 1.09361 : state.dist * 1.09361));
+      var conv = toYd(state.dist, state.unit) / UNIT_YD[to];
+      state.dist = Math.max(1, conv < 20 ? Math.round(conv * 10) / 10 : Math.round(conv));
       state.unit = to;
       $('dist').value = state.dist;
       buildTarget();
@@ -826,6 +831,16 @@
     fillClick();
     render();
   });
+  function applyScope() {
+    $('scopeon').checked = state.scope;
+    $('f-cunit').hidden = !state.scope;
+    $('f-click').hidden = !state.scope;
+  }
+  $('scopeon').addEventListener('change', function () {
+    state.scope = this.checked;
+    applyScope();
+    render();
+  });
   $('click').addEventListener('change', function () {
     var v = parseFloat(this.value);
     state.cval = CLICKS[state.cunit].indexOf(v) !== -1 ? v : DEFAULT_CLICK[state.cunit];
@@ -835,6 +850,7 @@
   $('dist').value = state.dist;
   $('unit').value = state.unit;
   fillClick();
+  applyScope();
 
   [['ld-cal', 'cal'], ['ld-brand', 'brand'], ['ld-type', 'type'], ['ld-gr', 'gr'], ['ld-fps', 'fps'], ['ld-notes', 'notes']].forEach(function (p) {
     var el = $(p[0]);
@@ -983,13 +999,13 @@
     commit();
     var cg = state.groups[state.cur], ct = condText(state.cond);
     if (ct) lines.push({ t: ct, s: 22, w: 400, c: P.mute });
-    lines.push({ t: state.dist + ' ' + (state.unit === 'm' ? 'm' : 'yd') + ' · ' + shotsText(n, state.off.length) + ' · ' + date, s: 22, w: 400, c: P.mute });
+    lines.push({ t: state.dist + ' ' + UNIT_ABBR[state.unit] +' · ' + shotsText(n, state.off.length) + ' · ' + date, s: 22, w: 400, c: P.mute });
     if (state.off.length) lines.push({ t: 'Off-grid: ' + state.off.map(function (o, i) { return (i + 1) + '. ' + offText(o, cg); }).join('; '), s: 22, w: 400, c: P.mute });
     if (n > 1) lines.push({ t: 'Group ' + $('gsize').textContent + ' MOA · mean radius ' + $('mr').textContent + ' · ' + $('wh').textContent, s: 24, w: 600, c: P.ink });
     if (n > 0) {
       lines.push({ t: 'Center ' + $('gc').textContent, s: 24, w: 400, c: P.ink });
       var strip = function (t) { return t.replace(/^[^A-Za-z0-9]+/, ''); };
-      lines.push({ t: 'Dial ' + strip($('dwind').textContent) + ' · ' + strip($('delev').textContent), s: 24, w: 400, c: P.ink });
+      if (state.scope) lines.push({ t: 'Dial ' + strip($('dwind').textContent) + ' · ' + strip($('delev').textContent), s: 24, w: 400, c: P.ink });
     }
 
     var y = 22, txt = '';
@@ -1127,7 +1143,7 @@
       var g = it.g, k = it.k, st = it.st, n = g.shots.length, L = g.load, parts = loadParts(L);
       it.top = [{ t: displayName(g, it.i), s: 28, w: 700, c: P.ink }];
       if (parts.length) it.top.push({ t: parts.join(' · '), s: 22, w: 600, c: P.ink });
-      it.top.push({ t: g.dist + ' ' + (g.unit === 'm' ? 'm' : 'yd') + ' · ' + shotsText(n, g.off.length), s: 20, w: 400, c: P.mute });
+      it.top.push({ t: g.dist + ' ' + UNIT_ABBR[g.unit] +' · ' + shotsText(n, g.off.length), s: 20, w: 400, c: P.mute });
       if (L.notes) it.top.push({ t: L.notes, s: 20, w: 400, c: P.mute });
       if (condText(g.cond)) it.top.push({ t: condText(g.cond), s: 20, w: 400, c: P.mute });
       it.bot = [];
@@ -1135,7 +1151,7 @@
       else it.bot.push({ t: n ? 'One shot, no group size yet' : 'No shots', s: 24, w: 700, c: P.mute });
       if (st) {
         it.bot.push({ t: 'Center ' + side(st.cx * k, 'R', 'L') + ', ' + side(st.cy * k, 'U', 'D') + ' MOA', s: 22, w: 400, c: P.ink });
-        it.bot.push({ t: 'Dial ' + plain(clicksText(-st.cx * k, 'Right', 'Left')) + ' · ' + plain(clicksText(-st.cy * k, 'Up', 'Down')), s: 22, w: 400, c: P.ink });
+        if (state.scope) it.bot.push({ t: 'Dial ' + plain(clicksText(-st.cx * k, 'Right', 'Left')) + ' · ' + plain(clicksText(-st.cy * k, 'Up', 'Down')), s: 22, w: 400, c: P.ink });
       }
     });
 
@@ -1148,7 +1164,7 @@
     var date = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     var head = [
       { t: 'MOA grid target · all groups', s: 34, w: 700, c: P.ink },
-      { t: date + ' · ' + items.length + ' groups · scope clicks ' + clickLabel(state.cunit, state.cval), s: 22, w: 400, c: P.mute }
+      { t: date + ' · ' + items.length + ' groups' + (state.scope ? ' · scope clicks ' + clickLabel(state.cunit, state.cval) : ''), s: 22, w: 400, c: P.mute }
     ];
     if (count > 1) head.push({ t: 'Smallest group: ' + bestName + ', ' + f2(best) + ' MOA', s: 24, w: 600, c: P.ink });
     var hb = textBlock(head, M, 22, W - 2 * M);
@@ -1182,7 +1198,7 @@
   function r4(v) { return Math.round(v * 10000) / 10000; }
 
   function groupReport(g, i) {
-    var k = 100 / (g.unit === 'm' ? g.dist * 1.09361 : g.dist), ipm = 1.047 / k;
+    var k = 100 / toYd(g.dist, g.unit), ipm = 1.047 / k;
     var dial = function (v, pos, neg) {
       var c = Math.round(Math.abs(v) / clickMoa());
       return { direction: c === 0 ? 'none' : (v > 0 ? pos : neg), clicks: c, moa: r4(Math.abs(v)), mrad: r4(Math.abs(v) / MOA_PER_MRAD) };
@@ -1202,10 +1218,11 @@
         centerUpMoa: r4(st.cy * k),
         dialToCenter: { windage: dial(-st.cx * k, 'right', 'left'), elevation: dial(-st.cy * k, 'up', 'down') }
       };
+      if (!state.scope) delete res.dialToCenter;
     }
     return {
       name: displayName(g, i),
-      distance: { value: g.dist, unit: g.unit === 'm' ? 'meters' : 'yards' },
+      distance: { value: g.dist, unit: UNIT_NAME[g.unit] },
       cartridge: {
         caliber: L.cal || '', brand: L.brand || '', bulletType: L.type || '',
         weightGrains: num(L.gr), velocityFps: num(L.fps), notes: L.notes || ''
@@ -1249,6 +1266,7 @@
       scope: { unit: state.cunit === 'moa' ? 'MOA' : 'MRAD', clickValue: state.cval },
       groups: list
     };
+    if (!state.scope) delete doc.scope;
     if (all) {
       var best = null;
       list.forEach(function (g) {
@@ -1305,5 +1323,5 @@
   render();
 })();
 </script>
-</body>
-</html>
+
+</body></html>
